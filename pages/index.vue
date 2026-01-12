@@ -131,7 +131,7 @@ const filterOptions = [
 
       <!-- Study List -->
       <div v-else class="space-y-3">
-        <StudyStudyCard
+        <StudyCard
           v-for="study in filteredStudies"
           :key="study.studyId"
           :study="study"
