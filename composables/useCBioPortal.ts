@@ -10,7 +10,8 @@ import type {
   ApiInfo,
 } from '~/types/cbioportal'
 
-const API_BASE = 'https://www.cbioportal.org/api'
+// Use server-side proxy to avoid CORS issues
+const API_BASE = '/api/cbioportal'
 
 export function useCBioPortal() {
   const isLoading = ref(false)
