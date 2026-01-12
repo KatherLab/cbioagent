@@ -64,9 +64,10 @@ function isPanCanAtlas(studyId: string): boolean {
             PanCancer Atlas
           </span>
         </div>
-        <p class="text-sm text-app-muted line-clamp-2 mb-2">
-          {{ study.description }}
-        </p>
+        <p
+          class="text-sm text-app-muted line-clamp-2 mb-2 [&_a]:text-primary-600 [&_a]:hover:underline"
+          v-html="study.description"
+        />
         <div class="flex items-center gap-4 text-xs text-app-muted">
           <span class="flex items-center gap-1">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
