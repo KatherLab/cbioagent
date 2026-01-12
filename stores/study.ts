@@ -65,6 +65,18 @@ export const useStudyStore = defineStore('study', {
     // Patient count
     patientCount: (state): number => state.patients.length,
 
+    // Sample count (from sample lists, more reliable than study.allSampleCount)
+    sampleCount: (state): number => {
+      const allSamplesList = state.sampleLists.find(
+        (sl) => sl.category === 'all_cases_in_study' || sl.sampleListId.endsWith('_all')
+      )
+      if (allSamplesList && allSamplesList.sampleCount > 0) {
+        return allSamplesList.sampleCount
+      }
+      // Fallback to study allSampleCount
+      return state.currentStudy?.allSampleCount || 0
+    },
+
     // Get patient attributes (filter from clinical attributes)
     patientAttributes: (state): ClinicalAttribute[] => {
       return state.clinicalAttributes.filter((a) => a.patientAttribute)

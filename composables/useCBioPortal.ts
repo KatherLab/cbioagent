@@ -8,6 +8,9 @@ import type {
   ChartData,
   SurvivalData,
   ApiInfo,
+  Gene,
+  Mutation,
+  MutationSummary,
 } from '~/types/cbioportal'
 
 // Use server-side proxy to avoid CORS issues
@@ -284,6 +287,87 @@ export function useCBioPortal() {
     }
   }
 
+  // Search for genes by keyword
+  async function searchGenes(keyword: string): Promise<Gene[]> {
+    if (!keyword || keyword.length < 2) return []
+    try {
+      const genes = await $fetch<Gene[]>(`${API_BASE}/genes`, {
+        params: { keyword },
+      })
+      return genes.slice(0, 20) // Limit results
+    } catch (e) {
+      console.error('Failed to search genes:', e)
+      return []
+    }
+  }
+
+  // Fetch mutations for a gene in a study
+  async function fetchGeneMutations(
+    studyId: string,
+    entrezGeneId: number,
+    molecularProfileId: string
+  ): Promise<Mutation[]> {
+    try {
+      const mutations = await $fetch<Mutation[]>(
+        `${API_BASE}/molecular-profiles/${molecularProfileId}/mutations/fetch`,
+        {
+          method: 'POST',
+          params: { projection: 'DETAILED' },
+          body: {
+            entrezGeneIds: [entrezGeneId],
+            sampleListId: `${studyId}_all`,
+          },
+        }
+      )
+      return mutations
+    } catch (e) {
+      console.error('Failed to fetch mutations:', e)
+      return []
+    }
+  }
+
+  // Summarize mutation data
+  function summarizeMutations(
+    mutations: Mutation[],
+    gene: Gene,
+    totalSamples: number
+  ): MutationSummary {
+    const uniqueSamples = new Set(mutations.map((m) => m.sampleId)).size
+    const mutationRate = totalSamples > 0 ? (uniqueSamples / totalSamples) * 100 : 0
+
+    // Count mutation types
+    const typeCounts = new Map<string, number>()
+    for (const m of mutations) {
+      const type = m.mutationType || 'Unknown'
+      typeCounts.set(type, (typeCounts.get(type) || 0) + 1)
+    }
+    const sortedTypes = Array.from(typeCounts.entries()).sort((a, b) => b[1] - a[1])
+
+    // Count protein changes
+    const proteinCounts = new Map<string, number>()
+    for (const m of mutations) {
+      if (m.proteinChange) {
+        proteinCounts.set(m.proteinChange, (proteinCounts.get(m.proteinChange) || 0) + 1)
+      }
+    }
+    const topProteinChanges = Array.from(proteinCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([change, count]) => ({ change, count }))
+
+    return {
+      gene,
+      totalMutations: mutations.length,
+      uniqueSamples,
+      mutationRate,
+      mutationTypes: {
+        labels: sortedTypes.map(([label]) => label),
+        values: sortedTypes.map(([, count]) => count),
+      },
+      topProteinChanges,
+    }
+  }
+
   return {
     isLoading,
     error,
@@ -301,5 +385,8 @@ export function useCBioPortal() {
     calculateAgeHistogram,
     extractSurvivalData,
     filterAndSortStudies,
+    searchGenes,
+    fetchGeneMutations,
+    summarizeMutations,
   }
 }

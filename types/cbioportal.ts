@@ -94,3 +94,51 @@ export interface ApiInfo {
   gitBranch: string
   gitCommitId: string
 }
+
+// Gene types
+export interface Gene {
+  entrezGeneId: number
+  hugoGeneSymbol: string
+  type: string
+}
+
+// Mutation types
+export interface Mutation {
+  uniqueSampleKey: string
+  uniquePatientKey: string
+  molecularProfileId: string
+  sampleId: string
+  patientId: string
+  entrezGeneId: number
+  gene: Gene
+  studyId: string
+  center: string
+  mutationStatus: string
+  validationStatus: string
+  tumorAltCount: number
+  tumorRefCount: number
+  normalAltCount: number
+  normalRefCount: number
+  startPosition: number
+  endPosition: number
+  referenceAllele: string
+  proteinChange: string
+  mutationType: string
+  ncbiBuild: string
+  variantType: string
+  keyword: string
+  chr: string
+  variantAllele: string
+  refseqMrnaId: string
+  proteinPosStart: number
+  proteinPosEnd: number
+}
+
+export interface MutationSummary {
+  gene: Gene
+  totalMutations: number
+  uniqueSamples: number
+  mutationRate: number
+  mutationTypes: ChartData
+  topProteinChanges: { change: string; count: number }[]
+}

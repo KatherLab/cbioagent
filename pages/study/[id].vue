@@ -1,13 +1,19 @@
 <script setup lang="ts">
 import { useStudyStore } from '~/stores/study'
-import type { ChartData, SurvivalData } from '~/types/cbioportal'
+import type { ChartData, SurvivalData, Gene, MutationSummary } from '~/types/cbioportal'
 
 const route = useRoute()
 const studyStore = useStudyStore()
-const { calculateDistribution, calculateAgeHistogram, extractSurvivalData } = useCBioPortal()
+const { calculateDistribution, calculateAgeHistogram, extractSurvivalData, fetchGeneMutations, summarizeMutations } = useCBioPortal()
 
 const studyId = computed(() => route.params.id as string)
-const activeTab = ref<'overview' | 'clinical' | 'molecular'>('overview')
+const activeTab = ref<'overview' | 'clinical' | 'molecular' | 'mutations'>('overview')
+
+// Mutation search state
+const selectedGene = ref<Gene | null>(null)
+const mutationSummary = ref<MutationSummary | null>(null)
+const isLoadingMutations = ref(false)
+const mutationError = ref<string | null>(null)
 
 // Load study data on mount
 onMounted(async () => {
@@ -120,6 +126,50 @@ function exportToCSV() {
 function copyStudyId() {
   navigator.clipboard.writeText(studyId.value)
 }
+
+// Find mutation profile for the study
+const mutationProfile = computed(() => {
+  return studyStore.molecularProfiles.find(
+    p => p.molecularAlterationType === 'MUTATION_EXTENDED'
+  )
+})
+
+// Handle gene selection
+async function handleGeneSelect(gene: Gene) {
+  if (!mutationProfile.value) {
+    mutationError.value = 'No mutation profile available for this study'
+    return
+  }
+
+  selectedGene.value = gene
+  mutationSummary.value = null
+  mutationError.value = null
+  isLoadingMutations.value = true
+
+  try {
+    const mutations = await fetchGeneMutations(
+      studyId.value,
+      gene.entrezGeneId,
+      mutationProfile.value.molecularProfileId
+    )
+
+    if (mutations.length === 0) {
+      mutationError.value = `No mutations found for ${gene.hugoGeneSymbol} in this study`
+      return
+    }
+
+    mutationSummary.value = summarizeMutations(
+      mutations,
+      gene,
+      studyStore.sampleCount
+    )
+  } catch (e) {
+    console.error('Failed to fetch mutations:', e)
+    mutationError.value = 'Failed to fetch mutation data'
+  } finally {
+    isLoadingMutations.value = false
+  }
+}
 </script>
 
 <template>
@@ -219,7 +269,7 @@ function copyStudyId() {
       <!-- Stats Grid -->
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <UiStatCard label="Patients" :value="studyStore.patientCount" icon="👥" />
-        <UiStatCard label="Samples" :value="studyStore.currentStudy.allSampleCount" icon="🧬" />
+        <UiStatCard label="Samples" :value="studyStore.sampleCount" icon="🧬" />
         <UiStatCard label="Molecular Profiles" :value="studyStore.molecularProfiles.length" icon="📊" />
         <UiStatCard label="Clinical Attributes" :value="studyStore.clinicalAttributes.length" icon="📋" />
       </div>
@@ -232,6 +282,7 @@ function copyStudyId() {
               { id: 'overview', label: 'Overview' },
               { id: 'clinical', label: 'Clinical Data' },
               { id: 'molecular', label: 'Molecular Profiles' },
+              { id: 'mutations', label: 'Gene Mutations' },
             ]"
             :key="tab.id"
             @click="activeTab = tab.id as typeof activeTab"
@@ -374,6 +425,50 @@ function copyStudyId() {
 
         <div v-if="studyStore.molecularProfiles.length === 0" class="card text-center py-8">
           <p class="text-app-muted">No molecular profiles available for this study.</p>
+        </div>
+      </div>
+
+      <!-- Gene Mutations Tab -->
+      <div v-if="activeTab === 'mutations'">
+        <div class="card mb-6">
+          <h3 class="font-medium text-app-text mb-3">Search Gene Mutations</h3>
+          <p class="text-sm text-app-muted mb-4">
+            Search for a gene to view mutation frequency and types in this study.
+          </p>
+          <GeneSearch @select="handleGeneSelect" />
+        </div>
+
+        <!-- Loading State -->
+        <div v-if="isLoadingMutations" class="py-8">
+          <UiLoadingSpinner size="md" text="Loading mutation data..." />
+        </div>
+
+        <!-- Error State -->
+        <div v-else-if="mutationError" class="card bg-amber-50 border-amber-200">
+          <div class="flex items-center gap-2 text-amber-700">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <span class="text-sm">{{ mutationError }}</span>
+          </div>
+        </div>
+
+        <!-- Mutation Results -->
+        <MutationResults
+          v-else-if="mutationSummary"
+          :summary="mutationSummary"
+          :study-id="studyId"
+        />
+
+        <!-- Empty State -->
+        <div v-else-if="!selectedGene" class="card text-center py-12">
+          <svg class="w-12 h-12 text-app-muted mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+          </svg>
+          <h3 class="font-medium text-app-text">Search for a gene</h3>
+          <p class="text-sm text-app-muted mt-1">
+            Enter a gene symbol (e.g., TP53, BRCA1, KRAS) to view mutation data
+          </p>
         </div>
       </div>
     </template>
