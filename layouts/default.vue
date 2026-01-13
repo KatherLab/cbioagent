@@ -6,7 +6,8 @@
     <header class="bg-white border-b border-app-border sticky top-0 z-50">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex items-center justify-between h-14">
-          <NuxtLink to="/" class="flex items-center gap-2">
+          <NuxtLink to="/" class="flex items-center gap-3">
+            <img src="https://jnkather.github.io/images/logo.png" class="h-8" alt="Kather Lab" />
             <div class="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center">
               <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -17,7 +18,10 @@
                 />
               </svg>
             </div>
-            <span class="text-lg font-semibold text-app-text">cBioAgent</span>
+            <div>
+              <h1 class="text-sm font-semibold text-app-text tracking-tight">cBioAgent</h1>
+              <p class="text-xs text-app-muted">Cancer genomics explorer</p>
+            </div>
           </NuxtLink>
           <nav class="flex items-center gap-4">
             <a
