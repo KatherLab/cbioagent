@@ -9,12 +9,20 @@ export default defineEventHandler(async (event) => {
 
   const url = `https://www.cbioportal.org/api/${path}${queryString ? `?${queryString}` : ''}`
 
+  // Read body for POST/PUT requests
+  let body: Record<string, unknown> | undefined = undefined
+  if (event.method === 'POST' || event.method === 'PUT') {
+    body = await readBody(event)
+  }
+
   try {
     const response = await $fetch(url, {
       method: event.method,
       headers: {
         'Accept': 'application/json',
+        'Content-Type': 'application/json',
       },
+      body: body,
     })
     return response
   } catch (error: unknown) {
