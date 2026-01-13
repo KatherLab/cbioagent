@@ -305,9 +305,13 @@ export function useCBioPortal() {
   async function fetchGeneMutations(
     studyId: string,
     entrezGeneId: number,
-    molecularProfileId: string
+    molecularProfileId: string,
+    sampleListId?: string
   ): Promise<Mutation[]> {
     try {
+      // Use provided sampleListId or try common patterns
+      const listId = sampleListId || `${studyId}_all`
+
       const mutations = await $fetch<Mutation[]>(
         `${API_BASE}/molecular-profiles/${molecularProfileId}/mutations/fetch`,
         {
@@ -315,7 +319,7 @@ export function useCBioPortal() {
           params: { projection: 'DETAILED' },
           body: {
             entrezGeneIds: [entrezGeneId],
-            sampleListId: `${studyId}_all`,
+            sampleListId: listId,
           },
         }
       )

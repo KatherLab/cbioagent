@@ -134,6 +134,17 @@ const mutationProfile = computed(() => {
   )
 })
 
+// Find the "all cases" sample list for the study
+const allCasesSampleList = computed(() => {
+  // Try different naming conventions used by cBioPortal
+  return studyStore.sampleLists.find(
+    sl => sl.category === 'all_cases_in_study' ||
+          sl.category === 'all_cases_with_mutation_data' ||
+          sl.sampleListId.endsWith('_all') ||
+          sl.sampleListId.includes('_all_')
+  )
+})
+
 // Handle gene selection
 async function handleGeneSelect(gene: Gene) {
   if (!mutationProfile.value) {
@@ -147,10 +158,14 @@ async function handleGeneSelect(gene: Gene) {
   isLoadingMutations.value = true
 
   try {
+    // Get the sample list ID - prefer the one from store, fallback to studyId_all
+    const sampleListId = allCasesSampleList.value?.sampleListId
+
     const mutations = await fetchGeneMutations(
       studyId.value,
       gene.entrezGeneId,
-      mutationProfile.value.molecularProfileId
+      mutationProfile.value.molecularProfileId,
+      sampleListId
     )
 
     if (mutations.length === 0) {
